@@ -1,4 +1,4 @@
-;;; company-tabnine.el --- A company-mode backend for TabNine
+;;; company-tabnine.el --- A company-mode backend for TabNine -*- lexical-binding: t -*-
 ;;
 ;; Copyright (c) 2018 Tommy Xiang
 ;;
@@ -201,10 +201,10 @@ Only useful on GNU/Linux.  Automatically set if NixOS is detected."
   :group 'company-tabnine
   :type 'boolean)
 
-;; (defcustom company-tabnine-async t
-;;   "Whether or not to use async operations to fetch data."
-;;   :group 'company-tabnine
-;;   :type 'boolean)
+(defcustom company-tabnine-async nil
+  "Whether or not to use async operations to fetch data."
+  :group 'company-tabnine
+  :type 'boolean)
 
 (defcustom company-tabnine-show-annotation t
   "Whether to show an annotation inline with the candidate."
@@ -563,6 +563,12 @@ PROCESS is the process under watch, OUTPUT is the output received."
    (alist-get 'results response)
    #'company-tabnine--construct-candidate-generic))
 
+(defun company-tabnine--candidates-async (prefix callback)
+  "Candidates-command handler for the company backend for PREFIX.
+
+Return completion candidates.  Must be called after `company-tabnine-query'."
+  (funcall callback (company-tabnine--get-candidates company-tabnine--response)))
+
 (defun company-tabnine--candidates (prefix)
   "Candidates-command handler for the company backend for PREFIX.
 
@@ -655,10 +661,11 @@ See documentation of `company-backends' for details."
   (cl-case command
     (interactive (company-begin-backend 'company-tabnine))
     (prefix (company-tabnine--prefix))
-    (candidates (company-tabnine--candidates arg))
-    ;; TODO: should we use async or not?
-    ;; '(:async . (lambda (callback)
-    ;;              (funcall callback (company-tabnine--candidates) arg))))
+    (candidates
+     (or (and company-tabnine-async
+              (cons :async (lambda (callback) (company-tabnine--candidates-async arg callback))))
+         (company-tabnine--candidates arg)))
+
     (meta (company-tabnine--meta arg))
     (annotation (company-tabnine--annotation arg))
     (post-completion (company-tabnine--post-completion arg))
